@@ -52,20 +52,37 @@ Provides basic user authentication functions to enhance system integrity.
 
 ## Project Structure
 ai_study_assistant/
-
 │
-├── app.py # Main program (Streamlit application)
-
-├── data/
-
-│ └── history.json # Historical data
-
-└── README.md # Project documentation
----
-
+├── data/                          # 数据存储目录
+│   ├── history.json              # 历史记录
+│   └── knowledge_base.json       # 知识库
+│
+├── utils/                         # 工具模块
+│   ├── __init__.py
+│   ├── file_handler.py           # 文件处理
+│   └── text_processing.py        # 文本处理
+│
+├── app.py                         # 主程序入口
+├── config.py                      # 配置信息
+├── qa.py                          # 问答模块
+├── quiz.py                        # 测验模块
+├── summary.py                     # 总结模块
+├── README.md                      # 项目说明文档
+├── requirements.txt               # 依赖包列表
+└── .venv/                         # 虚拟环境（不建议提交到Git）
 ## ⚙️ Installation Instructions
 
+1️⃣ Knowledge-Based Question Answering (QA System): Semantic matching based on a knowledge base; uses vectorization and similarity retrieval; returns the most relevant answers.
+
+2️⃣ Text Summarization: Automatically summarizes input text; extracts core information; suitable for note-taking/document compression.
+
+3️⃣ Automatic Quiz Generation: Generates questions based on knowledge content; supports multiple-choice/short-answer questions; used for self-testing and review.
+
+4️⃣ Web UI (Streamlit): Simple and intuitive interface; supports input, querying, and result display; allows for quick deployment of local web applications.
 ```bash
+git clone https://github.com/你的用户名/ai_study_assistant.git
+cd ai_study_assistant
+pip install -r requirements.txt
 pip install streamlit PyPDF2
 If pip or python is not available, please use the full path:C:\Users\YourPath\Python39\python.exe -m pip install streamlit PyPDF2
 Run in the project root directory
