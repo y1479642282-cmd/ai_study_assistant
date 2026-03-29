@@ -6,7 +6,7 @@ import json
 import os
 import random
 from datetime import datetime
-from summary import summarize_text
+from summary import summarize_textgit status
 from qa import answer_question
 from quiz import generate_quiz
 
