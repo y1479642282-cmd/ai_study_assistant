@@ -5,8 +5,24 @@ from collections import Counter
 import json
 import os
 import random
+from datetime import datetime
+from summary import summarize_text
+from qa import answer_question
+from quiz import generate_quiz
 
+# ✅ AI模型（核心升级）
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# ===== 页面配置 =====
 st.set_page_config(page_title="AI Study Assistant Pro", layout="wide")
+
+# ===== 加载模型（只加载一次）=====
+@st.cache_resource
+def load_model():
+    return SentenceTransformer('all-MiniLM-L6-v2')
+
+model = load_model()
 
 # ===== 语言 =====
 language = st.sidebar.selectbox("🌍 Language / 语言", ["中文", "English"])
@@ -34,7 +50,7 @@ def login():
 
 # ===== 工具函数 =====
 def split_sentences(text):
-    return re.split(r'[.!?]', text)
+    return re.split(r'[.!?\n]', text)
 
 def extract_keywords(text):
     words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
@@ -43,6 +59,7 @@ def extract_keywords(text):
     freq = Counter(words)
     return [w for w, _ in freq.most_common(8)]
 
+# ===== 总结 =====
 def advanced_summary(text):
     sentences = split_sentences(text)
     sentences = [s.strip() for s in sentences if len(s) > 40]
@@ -53,29 +70,23 @@ def advanced_summary(text):
         "conclusion": sentences[6:8]
     }
 
+# ===== AI问答（升级版🔥）=====
 def smart_answer(text, question):
     sentences = split_sentences(text)
-    question_words = question.lower().split()
+    sentences = [s.strip() for s in sentences if len(s) > 30]
 
-    best_sentence = ""
-    best_score = 0
+    if not sentences:
+        return t("没有有效内容", "No valid content found")
 
-    for s in sentences:
-        s_lower = s.lower()
-        score = sum(1 for w in question_words if w in s_lower)
+    sentence_embeddings = model.encode(sentences)
+    question_embedding = model.encode([question])
 
-        if len(s) > 50:
-            score += 1
+    scores = cosine_similarity(question_embedding, sentence_embeddings)[0]
+    best_idx = scores.argmax()
 
-        if score > best_score:
-            best_score = score
-            best_sentence = s
+    return sentences[best_idx]
 
-    if best_score > 0:
-        return best_sentence.strip()
-    else:
-        return t("未找到相关答案", "No relevant answer found")
-
+# ===== Quiz =====
 def generate_quiz(text):
     sentences = split_sentences(text)
     sentences = [s.strip() for s in sentences if len(s) > 40]
@@ -104,24 +115,42 @@ def generate_quiz(text):
 def save_history(data):
     file_path = "data/history.json"
 
-    if not os.path.exists(file_path):
-        with open(file_path, "w") as f:
-            json.dump([], f)
+    if not os.path.exists("data"):
+        os.makedirs("data")
 
-    with open(file_path, "r") as f:
-        history = json.load(f)
+    # ✅ 如果文件坏了，自动修复
+    if not os.path.exists(file_path):
+        history = []
+    else:
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                history = json.load(f)
+        except:
+            history = []  # 文件坏了就重置
+
+    from datetime import datetime
+    data["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     history.append(data)
 
-    with open(file_path, "w") as f:
-        json.dump(history, f, indent=2)
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2, ensure_ascii=False)
 
 def load_history():
     file_path = "data/history.json"
-    if os.path.exists(file_path):
-        with open(file_path, "r") as f:
-            return json.load(f)
-    return []
+
+    if not os.path.exists(file_path):
+        return []
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+            else:
+                return []
+    except:
+        return []
 
 # ===== 主系统 =====
 def main_app():
@@ -138,7 +167,7 @@ def main_app():
 
         for page in reader.pages:
             if page.extract_text():
-                text += page.extract_text()
+                text += page.extract_text().replace("\xa0", " ")
 
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             t("📄 内容", "📄 Content"),
@@ -156,7 +185,10 @@ def main_app():
         # 总结
         with tab2:
             if st.button(t("生成总结", "Generate Summary")):
-                result = advanced_summary(text)
+                with st.spinner(t("AI正在总结...", "AI is summarizing...")):
+                    result = advanced_summary(text)
+
+                st.success("✅ Done!")
 
                 st.markdown(t("### 核心概述", "### Overview"))
                 for s in result["core"]:
@@ -177,8 +209,10 @@ def main_app():
             question = st.text_input(t("请输入问题", "Enter your question"))
 
             if st.button(t("获取答案", "Get Answer")):
-                answer = smart_answer(text, question)
+                with st.spinner("AI thinking..."):
+                    answer = smart_answer(text, question)
 
+                st.success("✅ Done!")
                 st.write("📌 Answer:")
                 st.write(answer)
 
@@ -207,8 +241,11 @@ def main_app():
         with tab5:
             history = load_history()
 
-            for item in history:
-                st.write(item)
+            if not history:
+                st.info(t("暂无记录", "No history yet"))
+            else:
+                for item in history[::-1]:
+                    st.write(item)
 
     else:
         st.info(t("请上传PDF文件", "Please upload a PDF file"))
