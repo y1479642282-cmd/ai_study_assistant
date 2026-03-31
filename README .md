@@ -12,7 +12,7 @@ This project is an intelligent learning assistant system for students. It aims t
 
 ### 📄 Document Parsing
 Supports uploading PDF files and automatically extracts text content for subsequent analysis.
-streamlit run app.py
+ py -m streamlit run app.py
     
 ### Intelligent Summary
 Automatically generates:
